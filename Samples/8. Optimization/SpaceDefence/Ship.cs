@@ -25,6 +25,7 @@ namespace SpaceDefence
         private Point target;
         private Color teamColor;
 
+
         /// <summary>
         /// The player character
         /// </summary>

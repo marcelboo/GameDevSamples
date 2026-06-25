@@ -7,7 +7,7 @@ namespace SpaceDefence
 {
     public abstract class GameObject
     {
-        protected Collider collider;
+        public Collider collider;
         public CollisionType CollisionType;
 
         /// <summary>

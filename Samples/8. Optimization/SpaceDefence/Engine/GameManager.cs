@@ -62,23 +62,52 @@ namespace SpaceDefence
             }
         }
 
+        //public void CheckCollision()
+        //{
+        //    // Checks once for every pair of 2 GameObjects if the collide.
+        //    for (int i = 0; i < _gameObjects.Count; i++)
+        //    {
+        //        for (int j = i + 1; j < _gameObjects.Count; j++)
+        //        {
+        //            if (_gameObjects[i].CheckCollision(_gameObjects[j]))
+        //            {
+        //                _gameObjects[i].OnCollision(_gameObjects[j]);
+        //                _gameObjects[j].OnCollision(_gameObjects[i]);
+        //            }
+        //        }
+        //    }
+
+        //}
         public void CheckCollision()
         {
-            // Checks once for every pair of 2 GameObjects if the collide.
             for (int i = 0; i < _gameObjects.Count; i++)
             {
-                for (int j = i+1; j < _gameObjects.Count; j++)
+                var a = _gameObjects[i];
+                if (a.collider == null) continue;
+
+                Rectangle boxA = a.collider.GetBoundingBox();
+
+                for (int j = i + 1; j < _gameObjects.Count; j++)
                 {
-                    if (_gameObjects[i].CheckCollision(_gameObjects[j]))
+                    var b = _gameObjects[j];
+                    if (b.collider == null)
+                        continue;
+
+                    if ((a.CollisionType & b.CollisionType) != 0)
+                        continue;
+
+                    if (!boxA.Intersects(b.collider.GetBoundingBox()))
+                        continue;
+
+                    if (a.CheckCollision(b))
                     {
-                        _gameObjects[i].OnCollision(_gameObjects[j]);
-                        _gameObjects[j].OnCollision(_gameObjects[i]);
+                        a.OnCollision(b);
+                        b.OnCollision(a);
                     }
                 }
             }
-            
         }
-        
+
         public void Update(GameTime gameTime) 
         {
             InputManager.Update();
