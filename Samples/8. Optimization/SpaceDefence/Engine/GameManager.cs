@@ -21,6 +21,9 @@ namespace SpaceDefence
         public Random RNG { get; private set; }
         public InputManager InputManager { get; private set; }
         public Game Game { get; private set; }
+       
+        private Dictionary<Point, List<GameObject>> _spatialGrid = new Dictionary<Point, List<GameObject>>();
+        private const int CELL_SIZE = 120;
 
         public static GameManager GetGameManager()
         {
@@ -80,32 +83,56 @@ namespace SpaceDefence
         //}
         public void CheckCollision()
         {
+            _spatialGrid.Clear();
+
+         
             for (int i = 0; i < _gameObjects.Count; i++)
             {
                 var a = _gameObjects[i];
                 if (a.collider == null) continue;
 
-                Rectangle boxA = a.collider.GetBoundingBox();
+                Point cell = GetCell(a.collider.GetBoundingBox().Center.ToVector2());
 
-                for (int j = i + 1; j < _gameObjects.Count; j++)
+                if (!_spatialGrid.ContainsKey(cell))
+                    _spatialGrid[cell] = new List<GameObject>();
+
+                _spatialGrid[cell].Add(a);
+            }
+           
+            foreach (var cell in _spatialGrid.Values)
+            {
+                for (int i = 0; i < cell.Count; i++)
                 {
-                    var b = _gameObjects[j];
-                    if (b.collider == null)
-                        continue;
+                    var a = cell[i];
+                    if (a.collider == null) continue;
 
-                    if ((a.CollisionType & b.CollisionType) != 0)
-                        continue;
+                    Rectangle boxA = a.collider.GetBoundingBox();
 
-                    if (!boxA.Intersects(b.collider.GetBoundingBox()))
-                        continue;
-
-                    if (a.CheckCollision(b))
+                    for (int j = i + 1; j < cell.Count; j++)
                     {
-                        a.OnCollision(b);
-                        b.OnCollision(a);
+                        var b = cell[j];
+                        if (b.collider == null) continue;
+                        if ((a.CollisionType & b.CollisionType) != 0)
+                            continue;
+
+                        if (!boxA.Intersects(b.collider.GetBoundingBox()))
+                            continue;
+
+                        if (a.CheckCollision(b))
+                        {
+                            a.OnCollision(b);
+                            b.OnCollision(a);
+                        }
                     }
                 }
             }
+        }
+        private Point GetCell(Vector2 position)
+        {
+            return new Point(
+                (int)(position.X / CELL_SIZE),
+                (int)(position.Y / CELL_SIZE)
+            );
         }
 
         public void Update(GameTime gameTime) 

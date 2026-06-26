@@ -24,6 +24,9 @@ namespace SpaceDefence
         private RectangleCollider _rectangleCollider;
         private Point target;
         private Color teamColor;
+        private Color[] bodyTargetData;
+        private Color[] turretTargetData;
+        private float previousHealth = -1;
 
 
         /// <summary>
@@ -52,7 +55,9 @@ namespace SpaceDefence
             turretData = new Color[base_turret.Width * base_turret.Height];
             base_turret.GetData<Color>(turretData);
             fadedTurret = new Texture2D(base_turret.GraphicsDevice, base_turret.Width, base_turret.Height);
-            
+            bodyTargetData = new Color[bodyData.Length];
+            turretTargetData = new Color[turretData.Length];
+
             _rectangleCollider.shape.Size = ship_body.Bounds.Size;
             _rectangleCollider.shape.Location -= new Point(ship_body.Width/2, ship_body.Height/2);
             base.Load(content);
@@ -123,17 +128,28 @@ namespace SpaceDefence
         public Vector2 AvoidObstacles()
         {
             Vector2 avoidance = Vector2.Zero;
-            foreach(GameObject other in GameManager.GetGameManager().GetGameObjects())
+            Vector2 myPosition = GetPosition().Center.ToVector2();
+
+            float avoidanceRangeSquared = AvoidanceRange * AvoidanceRange;
+            float avoidanceFactor = (float)Math.Sqrt(AvoidanceRange) * speed;
+
+            foreach (GameObject other in GameManager.GetGameManager().GetGameObjects())
             {
-                if(other == this || !other.CollisionType.HasFlag(CollisionType.Solid))
+                if (other == this || (other.CollisionType & CollisionType.Solid) == 0)
                     continue;
-                Vector2 difference = (GetPosition().Center - other.GetPosition().Center).ToVector2();
-                float distance = difference.Length();
-                if(distance < AvoidanceRange)
-                {
-                    avoidance += (float)Math.Sqrt(AvoidanceRange)*speed * Vector2.Normalize(difference)/(float)Math.Sqrt(distance);
-                }
+
+                Vector2 difference = myPosition - other.GetPosition().Center.ToVector2();
+
+                float distanceSquared = difference.LengthSquared();
+
+                if (distanceSquared >= avoidanceRangeSquared || distanceSquared == 0)
+                    continue;
+
+                float distance = (float)Math.Sqrt(distanceSquared);
+
+                avoidance += avoidanceFactor * difference / (distance * distance);
             }
+
             return avoidance;
         }
 
@@ -166,9 +182,13 @@ namespace SpaceDefence
 
         public override void Draw(GameTime gameTime, SpriteBatch spriteBatch)
         {
-            ReplaceAndFadeTexture(bodyData, fadedBody, teamColor, health / 100);
-            ReplaceAndFadeTexture(turretData, fadedTurret, teamColor, health / 100);
+            if (health != previousHealth)
+            {
+                ReplaceAndFadeTexture(bodyData, bodyTargetData, fadedBody, teamColor, health / 100f);
+                ReplaceAndFadeTexture(turretData, turretTargetData, fadedTurret, teamColor, health / 100f);
 
+                previousHealth = health;
+            }
             spriteBatch.Draw(fadedBody, _rectangleCollider.shape, Color.White);
             float aimAngle = LinePieceCollider.GetAngle(LinePieceCollider.GetDirection(GetPosition().Center, target));
             Rectangle turretLocation = base_turret.Bounds;
@@ -185,23 +205,23 @@ namespace SpaceDefence
         /// <param name="target">The buffer on the graphics card to write the data to</param>
         /// <param name="color">The color to make the ship (alpha is ignored)</param>
         /// <param name="percentage">The percentage of health left</param>
-        public static void ReplaceAndFadeTexture(Color[] textureData, Texture2D target, Color color, float percentage)
+        public static void ReplaceAndFadeTexture(Color[] textureData, Color[] targetData, Texture2D target, Color color, float percentage)
         {
 
-            Color[] targetData = new Color[textureData.Length];
+            float red = color.R * percentage;
+            float green = color.G * percentage;
+            float blue = color.B * percentage;
 
             for (int i = 0; i < targetData.Length; i++)
             {
+                Color source = textureData[i];
                 if (textureData[i].R == textureData[i].B && textureData[i].G == 0 && textureData[i].R != 0)
                 {
-                    // Read the Red chanel out as a float instead of a byte
-                    float originalShade = textureData[i].ToVector4().X;
-
-                    // Fade the pixel to black based on health percentage and shading
-                    targetData[i].R = (byte)(color.R * percentage * originalShade);
-                    targetData[i].G = (byte)(color.G * percentage * originalShade);
-                    targetData[i].B = (byte)(color.B * percentage * originalShade);
-                    targetData[i].A = textureData[i].A;
+                    float shade = source.R / 255f;
+                    targetData[i].R = (byte)(red * shade);
+                    targetData[i].G = (byte)(green * shade);
+                    targetData[i].B = (byte)(blue * shade);
+                    targetData[i].A = source.A;
                 }
                 else
                 {
