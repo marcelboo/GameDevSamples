@@ -83,21 +83,21 @@ namespace SpaceDefence
         //}
         public void CheckCollision()
         {
-            _spatialGrid.Clear();
+            //_spatialGrid.Clear();
 
          
-            for (int i = 0; i < _gameObjects.Count; i++)
-            {
-                var a = _gameObjects[i];
-                if (a.collider == null) continue;
+            //for (int i = 0; i < _gameObjects.Count; i++)
+            //{
+            //    var a = _gameObjects[i];
+            //    if (a.collider == null) continue;
 
-                Point cell = GetCell(a.collider.GetBoundingBox().Center.ToVector2());
+            //    Point cell = GetCell(a.collider.GetBoundingBox().Center.ToVector2());
 
-                if (!_spatialGrid.ContainsKey(cell))
-                    _spatialGrid[cell] = new List<GameObject>();
+            //    if (!_spatialGrid.ContainsKey(cell))
+            //        _spatialGrid[cell] = new List<GameObject>();
 
-                _spatialGrid[cell].Add(a);
-            }
+            //    _spatialGrid[cell].Add(a);
+            //}
            
             foreach (var cell in _spatialGrid.Values)
             {
@@ -141,7 +141,7 @@ namespace SpaceDefence
             // Handle input
             HandleInput(InputManager);
 
-
+            BuildSpatialGrid();
             // Update
             foreach (GameObject gameObject in _gameObjects)
             {
@@ -214,6 +214,45 @@ namespace SpaceDefence
             return new Vector2(
                 RNG.Next(0, Game.GraphicsDevice.Viewport.Width),
                 RNG.Next(0, Game.GraphicsDevice.Viewport.Height));
+        }
+        private void BuildSpatialGrid()
+        {
+            _spatialGrid.Clear();
+
+            foreach (GameObject obj in _gameObjects)
+            {
+                if (obj.collider == null)
+                    continue;
+
+                Point cell = GetCell(obj.collider.GetBoundingBox().Center.ToVector2());
+
+                if (!_spatialGrid.TryGetValue(cell, out var list))
+                {
+                    list = new List<GameObject>();
+                    _spatialGrid[cell] = list;
+                }
+
+                list.Add(obj);
+            }
+        }
+        public List<GameObject> GetNearbyObjects(Vector2 position, int radius)
+        {
+            List<GameObject> result = new List<GameObject>();
+
+            Point center = GetCell(position);
+
+            for (int x = -radius; x <= radius; x++)
+            {
+                for (int y = -radius; y <= radius; y++)
+                {
+                    Point cell = new Point(center.X + x, center.Y + y);
+
+                    if (_spatialGrid.TryGetValue(cell, out var list))
+                        result.AddRange(list);
+                }
+            }
+
+            return result;
         }
     }
 }

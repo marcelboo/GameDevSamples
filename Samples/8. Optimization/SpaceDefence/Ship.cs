@@ -27,6 +27,9 @@ namespace SpaceDefence
         private Color[] bodyTargetData;
         private Color[] turretTargetData;
         private float previousHealth = -1;
+        private Ship nearestEnemy;
+        private float targetUpdateTimer = 0f;
+        private const float TargetUpdateInterval = 0.2f;
 
 
         /// <summary>
@@ -96,11 +99,24 @@ namespace SpaceDefence
         public override void Update(GameTime gameTime)
         {
             base.Update(gameTime);
-            cooldown -= (float)gameTime.ElapsedGameTime.TotalSeconds;
-            Ship nearest = FindNearestEnemy();
-            target = nearest == null ? Point.Zero : nearest.GetPosition().Center;
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            if( (target -GetPosition().Center).ToVector2().Length() < Range)
+            cooldown -= dt;
+
+            targetUpdateTimer -= dt;
+
+            if (targetUpdateTimer <= 0f ||  nearestEnemy == null || !GameManager.GetGameManager().GetGameObjects().Contains(nearestEnemy))
+            {
+                nearestEnemy = FindNearestEnemy();
+                targetUpdateTimer = TargetUpdateInterval;
+            }
+            
+            if (nearestEnemy != null)
+            {
+                target = nearestEnemy.GetPosition().Center;
+            }
+
+            if ( (target -GetPosition().Center).ToVector2().Length() < Range)
             {
                 if(cooldown < 0)
                 {
@@ -133,7 +149,7 @@ namespace SpaceDefence
             float avoidanceRangeSquared = AvoidanceRange * AvoidanceRange;
             float avoidanceFactor = (float)Math.Sqrt(AvoidanceRange) * speed;
 
-            foreach (GameObject other in GameManager.GetGameManager().GetGameObjects())
+            foreach (GameObject other in GameManager.GetGameManager().GetNearbyObjects(myPosition, 1))
             {
                 if (other == this || (other.CollisionType & CollisionType.Solid) == 0)
                     continue;
